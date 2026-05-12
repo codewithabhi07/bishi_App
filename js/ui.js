@@ -32,7 +32,8 @@ class UI {
         const savedTheme = localStorage.getItem('theme');
         if (savedTheme === 'dark') {
             document.body.classList.replace('light-mode', 'dark-mode');
-            document.querySelector('#theme-toggle i').classList.replace('fa-moon', 'fa-sun');
+            const icon = document.querySelector('#theme-toggle i');
+            if (icon) icon.classList.replace('fa-moon', 'fa-sun');
         }
     }
 
@@ -65,7 +66,7 @@ class UI {
         });
     }
 
-    static switchSection(sectionId) {
+    static async switchSection(sectionId) {
         const sections = document.querySelectorAll('.content-section');
         sections.forEach(s => s.classList.remove('active'));
         
@@ -74,43 +75,60 @@ class UI {
             target.classList.add('active');
             this.updateSectionTitle(sectionId.charAt(0).toUpperCase() + sectionId.slice(1));
             this.setActiveNavLink(sectionId);
+            
+            // Trigger refresh for the section
+            if (window.App) await window.App.refreshSection(sectionId);
         }
         
-        // Auto-close sidebar on mobile
         if (window.innerWidth <= 992) {
             document.querySelector('.sidebar').classList.remove('active');
+            const overlay = document.getElementById('sidebar-overlay');
+            if (overlay) overlay.classList.remove('active');
         }
     }
 }
 
 // Global Event Listeners for UI components
 document.addEventListener('DOMContentLoaded', () => {
-    // Theme Toggle
-    document.getElementById('theme-toggle').addEventListener('click', () => UI.toggleTheme());
+    const themeToggle = document.getElementById('theme-toggle');
+    if (themeToggle) themeToggle.addEventListener('click', () => UI.toggleTheme());
     
-    // Mobile Sidebar Toggle
-    document.getElementById('mobile-toggle').addEventListener('click', () => {
-        document.querySelector('.sidebar').classList.toggle('active');
-        document.getElementById('sidebar-overlay').classList.toggle('active');
-    });
+    const mobileToggle = document.getElementById('mobile-toggle');
+    if (mobileToggle) {
+        mobileToggle.addEventListener('click', () => {
+            document.querySelector('.sidebar').classList.toggle('active');
+            document.getElementById('sidebar-overlay').classList.toggle('active');
+        });
+    }
 
-    document.getElementById('sidebar-overlay').addEventListener('click', () => {
-        document.querySelector('.sidebar').classList.remove('active');
-        document.getElementById('sidebar-overlay').classList.remove('active');
-    });
-
-    // Section Routing
-    document.querySelectorAll('.nav-link[data-section]').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const section = link.getAttribute('data-section');
-            UI.switchSection(section);
-            
-            // Explicitly close sidebar and overlay on mobile after selection
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    if (sidebarOverlay) {
+        sidebarOverlay.addEventListener('click', () => {
             document.querySelector('.sidebar').classList.remove('active');
             document.getElementById('sidebar-overlay').classList.remove('active');
+        });
+    }
+
+    document.querySelectorAll('.close-modal').forEach(btn => {
+        btn.addEventListener('click', () => UI.closeModal());
+    });
+
+    const modalOverlay = document.getElementById('modal-overlay');
+    if (modalOverlay) {
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target.id === 'modal-overlay') UI.closeModal();
+        });
+    }
+
+    document.querySelectorAll('.nav-link[data-section]').forEach(link => {
+        link.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const section = link.getAttribute('data-section');
+            await UI.switchSection(section);
         });
     });
 
     UI.loadTheme();
 });
+
+window.UI = UI;

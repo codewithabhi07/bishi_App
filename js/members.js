@@ -1,7 +1,7 @@
 const Members = {
-    render(searchTerm = '') {
-        const members = Store.getMembers();
-        const groups = Store.getGroups();
+    async render(searchTerm = '') {
+        const members = await Store.getMembers();
+        const groups = await Store.getGroups();
         const body = document.getElementById('members-body');
         body.innerHTML = '';
 
@@ -35,33 +35,33 @@ const Members = {
         });
     },
 
-    delete(id) {
+    async delete(id) {
         if (confirm('Are you sure you want to remove this member?')) {
-            Store.deleteMember(id);
-            this.render();
+            await Store.deleteMember(id);
+            await this.render();
             UI.showToast('Member removed', 'warning');
         }
     }
 };
 
-// Event Listeners for Members
 document.addEventListener('DOMContentLoaded', () => {
     const addMemberBtn = document.getElementById('add-member-btn');
     const memberForm = document.getElementById('member-form');
 
     if (addMemberBtn) {
-        addMemberBtn.addEventListener('click', () => {
-            if (Store.getGroups().length === 0) {
+        addMemberBtn.addEventListener('click', async () => {
+            const groups = await Store.getGroups();
+            if (groups.length === 0) {
                 UI.showToast('Please create a group first!', 'error');
                 return;
             }
-            Groups.updateDropdowns();
+            await Groups.updateDropdowns();
             UI.showModal('member-modal');
         });
     }
 
     if (memberForm) {
-        memberForm.addEventListener('submit', (e) => {
+        memberForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const memberData = {
                 name: document.getElementById('member-name').value,
@@ -69,10 +69,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 groupId: document.getElementById('member-group-select').value
             };
 
-            Store.addMember(memberData);
+            await Store.addMember(memberData);
             UI.closeModal();
             memberForm.reset();
-            Members.render();
+            await Members.render();
             UI.showToast('Member added successfully!');
         });
     }

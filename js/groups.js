@@ -1,6 +1,7 @@
 const Groups = {
-    render() {
-        const groups = Store.getGroups();
+    async render() {
+        const groups = await Store.getGroups();
+        const allMembers = await Store.getMembers();
         const container = document.getElementById('groups-list');
         container.innerHTML = '';
 
@@ -10,7 +11,7 @@ const Groups = {
         }
 
         groups.forEach(group => {
-            const members = Store.getMembers().filter(m => m.groupId === group.id);
+            const members = allMembers.filter(m => m.groupId === group.id);
             const card = document.createElement('div');
             card.className = 'group-card glass';
             card.innerHTML = `
@@ -31,24 +32,21 @@ const Groups = {
         });
     },
 
-    delete(id) {
-        if (confirm('Are you sure you want to delete this group and all its members?')) {
-            Store.deleteGroup(id);
-            this.render();
+    async delete(id) {
+        if (confirm('Are you sure you want to delete this group?')) {
+            await Store.deleteGroup(id);
+            await this.render();
             UI.showToast('Group deleted', 'warning');
-            
-            // Refresh member dropdowns if any
-            this.updateDropdowns();
+            await this.updateDropdowns();
         }
     },
 
     viewMembers(groupId) {
         UI.switchSection('members');
-        // We could filter here, but for now we just switch
     },
 
-    updateDropdowns() {
-        const groups = Store.getGroups();
+    async updateDropdowns() {
+        const groups = await Store.getGroups();
         const dropdowns = [
             document.getElementById('member-group-select'),
             document.getElementById('draw-group-select'),
@@ -67,7 +65,6 @@ const Groups = {
     }
 };
 
-// Event Listeners for Groups
 document.addEventListener('DOMContentLoaded', () => {
     const addGroupBtn = document.getElementById('add-group-btn');
     const groupForm = document.getElementById('group-form');
@@ -79,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (groupForm) {
-        groupForm.addEventListener('submit', (e) => {
+        groupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const groupData = {
                 name: document.getElementById('group-name').value,
@@ -87,11 +84,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 duration: document.getElementById('group-duration').value
             };
 
-            Store.addGroup(groupData);
+            await Store.addGroup(groupData);
             UI.closeModal();
             groupForm.reset();
-            Groups.render();
-            Groups.updateDropdowns();
+            await Groups.render();
+            await Groups.updateDropdowns();
             UI.showToast('Group created successfully!');
         });
     }

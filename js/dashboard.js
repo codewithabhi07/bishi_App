@@ -1,21 +1,33 @@
 const Dashboard = {
-    render() {
-        this.updateStats();
-        this.renderRecentActivity();
-        this.renderCharts();
+    async render() {
+        await this.updateStats();
+        await this.renderRecentActivity();
+        await this.renderCharts();
     },
 
-    updateStats() {
-        const members = Store.getMembers();
-        const transactions = Store.getTransactions();
-        const draws = Store.getDrawHistory();
+    async updateStats() {
+        const members = await Store.getMembers();
+        const transactions = await Store.getTransactions();
+        const draws = await Store.getDrawHistory();
 
         const totalCollected = transactions
             .filter(t => t.type === 'Payment')
             .reduce((sum, t) => sum + parseFloat(t.amount), 0);
 
         const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
-        const paidCount = transactions.filter(t => t.type === 'Payment' && t.month === currentMonth).length;
+        
+        // Use for...of to handle async getMemberTotalPaid inside loop
+        let paidCount = 0;
+        const groups = await Store.getGroups();
+        for (const member of members) {
+            const group = groups.find(g => g.id === member.groupId);
+            const targetAmount = group ? parseFloat(group.contribution) : 0;
+            const totalPaid = await Store.getMemberTotalPaid(member.id, currentMonth);
+            if (totalPaid >= targetAmount) {
+                paidCount++;
+            }
+        }
+        
         const pendingCount = members.length - paidCount;
 
         document.getElementById('stat-total-members').textContent = members.length;
@@ -26,8 +38,8 @@ const Dashboard = {
         document.getElementById('stat-next-draw').textContent = nextDraw;
     },
 
-    renderRecentActivity() {
-        const transactions = Store.getTransactions().slice(-5).reverse();
+    async renderRecentActivity() {
+        const transactions = (await Store.getTransactions()).slice(0, 5);
         const container = document.getElementById('recent-activity-list');
         container.innerHTML = '';
 
@@ -53,14 +65,13 @@ const Dashboard = {
         });
     },
 
-    renderCharts() {
+    async renderCharts() {
         const ctx = document.getElementById('collectionChart');
         if (!ctx) return;
 
-        // Destroy existing chart if it exists to avoid overlap
         if (window.colChart) window.colChart.destroy();
 
-        const transactions = Store.getTransactions();
+        const transactions = await Store.getTransactions();
         const last6Months = [];
         for (let i = 5; i >= 0; i--) {
             const d = new Date();
@@ -68,7 +79,6 @@ const Dashboard = {
             last6Months.push(d.toLocaleString('default', { month: 'short' }));
         }
 
-        // Mock data for trends based on real transactions if available
         const data = last6Months.map(m => {
             return transactions
                 .filter(t => t.type === 'Payment' && new Date(t.date).toLocaleString('default', { month: 'short' }) === m)
@@ -99,8 +109,7 @@ const Dashboard = {
         });
     },
 
-    renderReports() {
-        // Additional charts for reports section
+    async renderReports() {
         const growthCtx = document.getElementById('growthChart');
         const distCtx = document.getElementById('groupDistChart');
 
@@ -121,8 +130,8 @@ const Dashboard = {
 
         if (distCtx) {
             if (window.distChart) window.distChart.destroy();
-            const groups = Store.getGroups();
-            const members = Store.getMembers();
+            const groups = await Store.getGroups();
+            const members = await Store.getMembers();
             
             const labels = groups.map(g => g.name);
             const counts = groups.map(g => members.filter(m => m.groupId === g.id).length);

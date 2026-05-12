@@ -1,7 +1,7 @@
 const Collections = {
-    render(groupFilter = 'all') {
-        const members = Store.getMembers();
-        const groups = Store.getGroups();
+    async render(groupFilter = 'all') {
+        const members = await Store.getMembers();
+        const groups = await Store.getGroups();
         const body = document.getElementById('collections-body');
         body.innerHTML = '';
 
@@ -17,10 +17,10 @@ const Collections = {
             return;
         }
 
-        filteredMembers.forEach(member => {
+        for (const member of filteredMembers) {
             const group = groups.find(g => g.id === member.groupId);
             const targetAmount = group ? parseFloat(group.contribution) : 0;
-            const paidAmount = Store.getMemberTotalPaid(member.id, currentMonth);
+            const paidAmount = await Store.getMemberTotalPaid(member.id, currentMonth);
             
             const isFullyPaid = paidAmount >= targetAmount;
             const isPartial = paidAmount > 0 && paidAmount < targetAmount;
@@ -55,7 +55,7 @@ const Collections = {
                 </td>
             `;
             body.appendChild(tr);
-        });
+        }
     },
 
     openPaymentModal(memberId, memberName, remaining) {
@@ -66,17 +66,17 @@ const Collections = {
         UI.showModal('payment-modal');
     },
 
-    handlePaymentSubmit(e) {
+    async handlePaymentSubmit(e) {
         e.preventDefault();
         const memberId = document.getElementById('pay-member-id').value;
         const amount = document.getElementById('pay-amount').value;
         const lateFee = document.getElementById('pay-late-fee').value;
         const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
         
-        const member = Store.getMembers().find(m => m.id === memberId);
+        const members = await Store.getMembers();
+        const member = members.find(m => m.id === memberId);
 
-        // Record main payment
-        Store.addTransaction({
+        await Store.addTransaction({
             memberId,
             memberName: member.name,
             amount,
@@ -85,9 +85,8 @@ const Collections = {
             description: `Monthly contribution for ${currentMonth}`
         });
 
-        // Record late fee if any
         if (parseFloat(lateFee) > 0) {
-            Store.addTransaction({
+            await Store.addTransaction({
                 memberId,
                 memberName: member.name,
                 amount: lateFee,
@@ -98,24 +97,23 @@ const Collections = {
         }
 
         UI.closeModal();
-        this.render(document.getElementById('collection-group-filter').value);
+        await this.render(document.getElementById('collection-group-filter').value);
         UI.showToast(`Payment recorded for ${member.name}`);
         
-        // Update dashboard if visible
-        if (typeof Dashboard !== 'undefined') Dashboard.render();
+        if (typeof Dashboard !== 'undefined') await Dashboard.render();
     }
 };
 
 document.addEventListener('DOMContentLoaded', () => {
     const filter = document.getElementById('collection-group-filter');
     if (filter) {
-        filter.addEventListener('change', (e) => {
-            Collections.render(e.target.value);
+        filter.addEventListener('change', async (e) => {
+            await Collections.render(e.target.value);
         });
     }
 
     const paymentForm = document.getElementById('payment-form');
     if (paymentForm) {
-        paymentForm.addEventListener('submit', (e) => Collections.handlePaymentSubmit(e));
+        paymentForm.addEventListener('submit', async (e) => await Collections.handlePaymentSubmit(e));
     }
 });

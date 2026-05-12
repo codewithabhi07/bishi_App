@@ -1,18 +1,13 @@
 const Draw = {
-    render() {
-        const groups = Store.getGroups();
+    async render() {
         const select = document.getElementById('draw-group-select');
-        
-        // Refresh history
-        this.renderHistory();
-
-        // Update stats when group changes
-        select.addEventListener('change', () => {
-            this.updateDrawStats(select.value);
+        await this.renderHistory();
+        select.addEventListener('change', async () => {
+            await this.updateDrawStats(select.value);
         });
     },
 
-    updateDrawStats(groupId) {
+    async updateDrawStats(groupId) {
         if (!groupId) {
             document.getElementById('draw-total-members').textContent = '0';
             document.getElementById('draw-remaining-members').textContent = '0';
@@ -20,17 +15,15 @@ const Draw = {
             return;
         }
 
-        const members = Store.getMembers().filter(m => m.groupId === groupId);
-        const history = Store.getDrawHistory().filter(h => h.groupId === groupId);
+        const members = (await Store.getMembers()).filter(m => m.groupId === groupId);
+        const history = (await Store.getDrawHistory()).filter(h => h.groupId === groupId);
         
-        // Current cycle members who haven't won
         const winnersInCurrentCycle = history.map(h => h.memberId);
         const remaining = members.filter(m => !winnersInCurrentCycle.includes(m.id));
 
         document.getElementById('draw-total-members').textContent = members.length;
         document.getElementById('draw-remaining-members').textContent = remaining.length;
 
-        // Render Eligible Names
         const namesContainer = document.getElementById('eligible-names');
         namesContainer.innerHTML = '';
         
@@ -58,24 +51,21 @@ const Draw = {
             return;
         }
 
-        const members = Store.getMembers().filter(m => m.groupId === groupId);
+        const members = (await Store.getMembers()).filter(m => m.groupId === groupId);
         if (members.length === 0) {
             UI.showToast('No members in this group', 'error');
             return;
         }
 
-        const history = Store.getDrawHistory().filter(h => h.groupId === groupId);
+        const history = (await Store.getDrawHistory()).filter(h => h.groupId === groupId);
         let winnersInCurrentCycle = history.map(h => h.memberId);
-        
         let eligibleMembers = members.filter(m => !winnersInCurrentCycle.includes(m.id));
         
-        // Strictly unique winner logic
         if (eligibleMembers.length === 0) {
-            eligibleMembers = members; // Reset cycle
+            eligibleMembers = members;
             UI.showToast('Starting new cycle...');
         }
 
-        // Animation start
         const btn = document.getElementById('start-draw-btn');
         const spinnerContainer = document.getElementById('draw-spinner-container');
         const nameShuffler = document.getElementById('draw-name-shuffler');
@@ -83,15 +73,11 @@ const Draw = {
         btn.disabled = true;
         spinnerContainer.classList.remove('hidden');
 
-        // Shuffle Animation
-        let shuffleCount = 0;
-        const shuffleInterval = setInterval(() => {
+        let shuffleInterval = setInterval(() => {
             const randomMember = members[Math.floor(Math.random() * members.length)];
             nameShuffler.textContent = randomMember.name;
-            shuffleCount++;
         }, 100);
 
-        // Selection after 3 seconds
         await new Promise(resolve => setTimeout(resolve, 3000));
         clearInterval(shuffleInterval);
 
@@ -101,8 +87,9 @@ const Draw = {
 
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        // Save Draw
-        const group = Store.getGroups().find(g => g.id === groupId);
+        const groups = await Store.getGroups();
+        const group = groups.find(g => g.id === groupId);
+        
         const drawRecord = {
             groupId,
             groupName: group.name,
@@ -111,9 +98,8 @@ const Draw = {
             amount: group.contribution * members.length
         };
 
-        Store.addDrawRecord(drawRecord);
-        
-        Store.addTransaction({
+        await Store.addDrawRecord(drawRecord);
+        await Store.addTransaction({
             memberId: winner.id,
             memberName: winner.name,
             amount: drawRecord.amount,
@@ -121,31 +107,24 @@ const Draw = {
             description: `Winner of ${group.name} monthly draw`
         });
 
-        // UI Reset
         this.showWinnerUI(winner.name);
         btn.disabled = false;
         spinnerContainer.classList.add('hidden');
         nameShuffler.style.color = '';
-        this.updateDrawStats(groupId);
-        this.renderHistory();
+        await this.updateDrawStats(groupId);
+        await this.renderHistory();
     },
 
     showWinnerUI(name) {
         document.getElementById('winner-name-display').textContent = name;
         UI.showModal('winner-modal');
-        
         if (typeof confetti === 'function') {
-            confetti({
-                particleCount: 150,
-                spread: 70,
-                origin: { y: 0.6 },
-                colors: ['#6366f1', '#ec4899', '#10b981', '#f59e0b']
-            });
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
         }
     },
 
-    renderHistory() {
-        const history = Store.getDrawHistory();
+    async renderHistory() {
+        const history = await Store.getDrawHistory();
         const container = document.getElementById('draw-history-list');
         container.innerHTML = '';
 
@@ -172,6 +151,6 @@ const Draw = {
 document.addEventListener('DOMContentLoaded', () => {
     const drawBtn = document.getElementById('start-draw-btn');
     if (drawBtn) {
-        drawBtn.addEventListener('click', () => Draw.performDraw());
+        drawBtn.addEventListener('click', async () => await Draw.performDraw());
     }
 });
