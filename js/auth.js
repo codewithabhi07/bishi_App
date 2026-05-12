@@ -58,23 +58,28 @@ document.addEventListener('DOMContentLoaded', () => {
             UI.showToast('Registration successful!');
             registerForm.reset();
         } catch (error) {
+            console.error("Auth Error Full Object:", error);
             console.error("Auth Error Code:", error.code);
-            console.error("Auth Error Message:", error.message);
             
-            let userMessage = error.message;
+            let userMessage = 'Registration failed. Please try again.';
             switch (error.code) {
                 case 'auth/operation-not-allowed':
-                    userMessage = 'Registration is currently disabled. Please enable Email/Password in Firebase Console.';
+                    userMessage = 'Email/Password registration is not enabled in Firebase Console. Please enable it under Authentication > Sign-in method.';
                     break;
                 case 'auth/weak-password':
-                    userMessage = 'Password should be at least 6 characters.';
+                    userMessage = 'The password is too weak. Please use at least 6 characters.';
                     break;
                 case 'auth/email-already-in-use':
-                    userMessage = 'An account with this email already exists.';
+                    userMessage = 'This email is already registered. Try logging in instead.';
                     break;
                 case 'auth/invalid-email':
-                    userMessage = 'Please enter a valid email address.';
+                    userMessage = 'The email address is not valid.';
                     break;
+                case 'auth/network-request-failed':
+                    userMessage = 'Network error. Please check your internet connection.';
+                    break;
+                default:
+                    userMessage = error.message;
             }
             UI.showToast(userMessage, 'error');
         }
