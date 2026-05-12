@@ -73,7 +73,42 @@ class Store {
         transaction.date = new Date().toISOString();
         transactions.push(transaction);
         this.save('transactions', transactions);
+        
+        // Add to Audit Log
+        this.addAuditLog(`Transaction: ${transaction.type} of $${transaction.amount} for ${transaction.memberName}`);
         return transaction;
+    }
+
+    static getMemberTotalPaid(memberId, month) {
+        const transactions = this.getTransactions();
+        return transactions
+            .filter(t => t.memberId === memberId && t.month === month && t.type === 'Payment')
+            .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+    }
+
+    // Audit Logs
+    static getAuditLogs() { return this.get('auditLogs'); }
+    static addAuditLog(action) {
+        const logs = this.getAuditLogs();
+        logs.unshift({
+            id: Date.now().toString(),
+            timestamp: new Date().toISOString(),
+            action,
+            user: this.getCurrentUser() ? this.getCurrentUser().name : 'System'
+        });
+        this.save('auditLogs', logs.slice(0, 100)); // Keep last 100 logs
+    }
+
+    // Archiving
+    static archiveGroup(groupId) {
+        const groups = this.getGroups();
+        const index = groups.findIndex(g => g.id === groupId);
+        if (index !== -1) {
+            groups[index].status = 'archived';
+            groups[index].archivedAt = new Date().toISOString();
+            this.save('groups', groups);
+            this.addAuditLog(`Archived group: ${groups[index].name}`);
+        }
     }
 
     // Draw History

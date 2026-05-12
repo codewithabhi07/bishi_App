@@ -2,7 +2,6 @@ const Draw = {
     render() {
         const groups = Store.getGroups();
         const select = document.getElementById('draw-group-select');
-        const historyList = document.getElementById('draw-history-list');
         
         // Refresh history
         this.renderHistory();
@@ -17,6 +16,7 @@ const Draw = {
         if (!groupId) {
             document.getElementById('draw-total-members').textContent = '0';
             document.getElementById('draw-remaining-members').textContent = '0';
+            document.getElementById('eligible-names').innerHTML = '';
             return;
         }
 
@@ -30,7 +30,22 @@ const Draw = {
         document.getElementById('draw-total-members').textContent = members.length;
         document.getElementById('draw-remaining-members').textContent = remaining.length;
 
-        // If remaining is 0, it means cycle is complete
+        // Render Eligible Names
+        const namesContainer = document.getElementById('eligible-names');
+        namesContainer.innerHTML = '';
+        
+        if (remaining.length === 0 && members.length > 0) {
+            namesContainer.innerHTML = '<span class="status-pill status-paid">All members have won! Cycle complete.</span>';
+        } else {
+            remaining.forEach(m => {
+                const span = document.createElement('span');
+                span.className = 'status-pill status-pending';
+                span.style.padding = '4px 10px';
+                span.textContent = m.name;
+                namesContainer.appendChild(span);
+            });
+        }
+
         if (members.length > 0 && remaining.length === 0) {
             UI.showToast('Cycle complete! Next draw will reset the cycle.', 'warning');
         }
@@ -52,24 +67,39 @@ const Draw = {
         const history = Store.getDrawHistory().filter(h => h.groupId === groupId);
         let winnersInCurrentCycle = history.map(h => h.memberId);
         
-        // If everyone has won, reset cycle (this is a simplified logic for SPA)
         let eligibleMembers = members.filter(m => !winnersInCurrentCycle.includes(m.id));
         
+        // Strictly unique winner logic
         if (eligibleMembers.length === 0) {
-            // Cycle reset - logically we could archive previous history or just ignore it for the new cycle
-            eligibleMembers = members;
+            eligibleMembers = members; // Reset cycle
             UI.showToast('Starting new cycle...');
         }
 
         // Animation start
         const btn = document.getElementById('start-draw-btn');
+        const spinnerContainer = document.getElementById('draw-spinner-container');
+        const nameShuffler = document.getElementById('draw-name-shuffler');
+        
         btn.disabled = true;
-        btn.textContent = 'Selecting Winner...';
+        spinnerContainer.classList.remove('hidden');
 
-        // Simulate "Rolling" effect
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Shuffle Animation
+        let shuffleCount = 0;
+        const shuffleInterval = setInterval(() => {
+            const randomMember = members[Math.floor(Math.random() * members.length)];
+            nameShuffler.textContent = randomMember.name;
+            shuffleCount++;
+        }, 100);
+
+        // Selection after 3 seconds
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        clearInterval(shuffleInterval);
 
         const winner = eligibleMembers[Math.floor(Math.random() * eligibleMembers.length)];
+        nameShuffler.textContent = winner.name;
+        nameShuffler.style.color = 'var(--success)';
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
         // Save Draw
         const group = Store.getGroups().find(g => g.id === groupId);
@@ -83,7 +113,6 @@ const Draw = {
 
         Store.addDrawRecord(drawRecord);
         
-        // Record as a transaction (Payout)
         Store.addTransaction({
             memberId: winner.id,
             memberName: winner.name,
@@ -92,12 +121,11 @@ const Draw = {
             description: `Winner of ${group.name} monthly draw`
         });
 
-        // Show Result
+        // UI Reset
         this.showWinnerUI(winner.name);
-        
-        // Reset UI
         btn.disabled = false;
-        btn.textContent = 'Roll the Dice!';
+        spinnerContainer.classList.add('hidden');
+        nameShuffler.style.color = '';
         this.updateDrawStats(groupId);
         this.renderHistory();
     },
@@ -106,7 +134,6 @@ const Draw = {
         document.getElementById('winner-name-display').textContent = name;
         UI.showModal('winner-modal');
         
-        // Confetti
         if (typeof confetti === 'function') {
             confetti({
                 particleCount: 150,

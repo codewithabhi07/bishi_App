@@ -244,9 +244,23 @@
                                 <option value="">Select Group</option>
                             </select>
                             <div class="draw-stats">
-                                <div>Total Members: <span id="draw-total-members">0</span></div>
+                                <div>Total: <span id="draw-total-members">0</span></div>
                                 <div>Remaining: <span id="draw-remaining-members">0</span></div>
                             </div>
+
+                            <div id="eligible-list-container" class="eligible-list glass" style="margin-top: 15px; padding: 15px; font-size: 0.9rem;">
+                                <h4 style="margin-bottom: 10px; color: var(--text-muted);">Eligible for this month:</h4>
+                                <div id="eligible-names" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                    <!-- Eligible names will appear here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Name Spinner Animation -->
+                            <div id="draw-spinner-container" class="spinner-container hidden">
+                                <div id="draw-name-shuffler" class="name-shuffler">? ? ?</div>
+                                <div class="spinner-glow"></div>
+                            </div>
+
                             <button id="start-draw-btn" class="btn btn-primary btn-large">Roll the Dice!</button>
                         </div>
                         <div class="draw-history glass">
@@ -286,6 +300,7 @@
                 <section id="reports" class="content-section">
                     <div class="section-header">
                         <h2>Analytics & Reports</h2>
+                        <button class="btn btn-primary" id="generate-report-btn"><i class="fas fa-file-pdf"></i> Generate Monthly Report</button>
                     </div>
                     <div class="reports-grid">
                         <div class="chart-container glass">
@@ -384,6 +399,30 @@
                 <p>Has won the draw for this month!</p>
                 <button class="btn btn-primary close-modal">Awesome!</button>
             </div>
+        </div>
+
+        <!-- Partial Payment Modal -->
+        <div id="payment-modal" class="modal glass hidden">
+            <div class="modal-header">
+                <h2>Record Payment</h2>
+                <button class="close-modal"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="payment-form">
+                <input type="hidden" id="pay-member-id">
+                <div class="form-group">
+                    <label>Member Name</label>
+                    <p id="pay-member-name" style="font-weight: 600;"></p>
+                </div>
+                <div class="form-group">
+                    <label>Amount to Pay</label>
+                    <input type="number" id="pay-amount" required class="glass">
+                </div>
+                <div class="form-group">
+                    <label>Late Fee (Optional)</label>
+                    <input type="number" id="pay-late-fee" value="0" class="glass">
+                </div>
+                <button type="submit" class="btn btn-primary">Submit Payment</button>
+            </form>
         </div>
     </div>
 
